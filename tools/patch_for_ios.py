@@ -83,6 +83,10 @@ def main():
     t = wrap_if0(t, 'static void inst_cb(', 'inst_cb')
     t = wrap_if0(t, 'static void instrument_class(', 'instrument_class')
 
+    # 构造函数里的自动装 hook 去掉：iOS 由面板手动 initKernel 触发，
+    # 否则 constructor 和面板各起一个 init_worker，同一个方法被 DobbyHook 两次 → 必崩
+    t = t.replace('pthread_create(&t,NULL,init_worker,NULL);', '/* iOS: 不自动装 hook */')
+
     # 装 hook 前的 30 秒硬等待：iOS 上由面板手动触发，缩短到 3 秒
     t = t.replace('sleep(30)', 'sleep(3)')
 
