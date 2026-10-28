@@ -8,6 +8,7 @@ extern "C" {
 
 /* 生命周期 */
 void     dnf_scan_init(void);
+void     xs_reload_api(void);   /* 重新解析 il2cpp 符号（Unity 就绪后调用） */
 void     dnf_scan_set_enabled(int v);
 int      dnf_diag_bits(void);
 
