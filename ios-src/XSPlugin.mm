@@ -88,7 +88,7 @@ extern "C" char* xs_api_call(const char* reqUtf8){
                 {"page",   dnf_rs_page_found() == 1},
                 {"P",      xs_engine_ready() == 1},
                 {"D",      false},
-                {"diag",   xs_engine_ready() ? "engine v" : "engine x"},
+                {"diag",   std::string(xs_engine_ready() ? "engine v" : "engine x") + " | " + xs_engine_state()},
                 {"mode",   {{"btn", dnf_use_click_get() == 1},
                             {"search", dnf_use_search_get() == 1},
                             {"sort", dnf_sort_sync_get() == 1},
