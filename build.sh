@@ -13,28 +13,27 @@ fi
 echo "== 1/4 改造 DnfScan.cpp =="
 python3 tools/patch_for_ios.py DnfScan.cpp ios-src/DnfScan.cpp
 
-echo "== 2/4 Dobby（inline hook 引擎） =="
-if [ ! -f ios-src/libs/libdobby.a ]; then
-  mkdir -p ios-src/libs
-  if [ ! -d third_party/Dobby ]; then
-    git clone --depth 1 https://github.com/jmpews/Dobby.git third_party/Dobby
-  fi
+echo "== 2/4 Dobby（按架构各编一份） =="
+mkdir -p ios-src/libs
+if [ ! -d third_party/Dobby ]; then
+  git clone --depth 1 https://github.com/jmpews/Dobby.git third_party/Dobby
+fi
+for ARCH in arm64 arm64e; do
+  if [ -f "ios-src/libs/libdobby.$ARCH.a" ]; then echo "   $ARCH 已有，跳过"; continue; fi
+  rm -rf "third_party/Dobby/build-$ARCH"
   cd third_party/Dobby
-  mkdir -p build && cd build
+  mkdir -p "build-$ARCH" && cd "build-$ARCH"
   cmake .. -DCMAKE_SYSTEM_NAME=iOS \
-           -DCMAKE_SYSTEM_PROCESSOR=arm64 \
-           -DCMAKE_OSX_ARCHITECTURES=arm64 \
+           -DCMAKE_SYSTEM_PROCESSOR=$ARCH \
+           -DCMAKE_OSX_ARCHITECTURES=$ARCH \
            -DCMAKE_OSX_DEPLOYMENT_TARGET=14.0 \
            -DCMAKE_BUILD_TYPE=Release
   make -j4
   LIB=$(find . -name 'libdobby*.a' | head -1)
-  if [ -z "$LIB" ]; then echo "[ERR] Dobby 编完没找到 libdobby.a"; find . -name '*.a' | head; exit 1; fi
-  cp "$LIB" "$ROOT/ios-src/libs/libdobby.a"
+  cp "$LIB" "$ROOT/ios-src/libs/libdobby.$ARCH.a"
   cd "$ROOT"
-  echo "   Dobby ok"
-else
-  echo "   已存在，跳过"
-fi
+  echo "   $ARCH ok"
+done
 
 echo "== 3/4 生成内嵌 HTML =="
 cd ios-src
@@ -44,9 +43,14 @@ else
   python3 -c "d=open('../script/index.html','rb').read();print('unsigned char XSHTML_DATA[] = {'+','.join(str(b) for b in d)+'};');print('unsigned int XSHTML_DATA_len = %d;'%len(d))" > XSHTML.h
 fi
 
-echo "== 4/4 编译 dylib =="
+echo "== 4/4 编译 dylib（双架构 + lipo） =="
+cd ios-src
 make clean >/dev/null 2>&1 || true
-make
+for ARCH in arm64 arm64e; do
+  make ARCH=$ARCH OUT=libXSPlugin.$ARCH.dylib
+done
+lipo -create -output libXSPlugin.dylib libXSPlugin.arm64.dylib libXSPlugin.arm64e.dylib
+echo "   lipo ok"
 
 echo
 echo "OK -> $ROOT/ios-src/libXSPlugin.dylib"
