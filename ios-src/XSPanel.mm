@@ -105,8 +105,7 @@ static CGRect xs_calc_rect(UIWindow* host){
 
         [host addSubview:g_panel];
 
-        UIPanGestureRecognizer* pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(onPan:)];
-        [g_panel addGestureRecognizer:pan];
+        /* 不做原生 pan：它会吃掉 webview 的滚动。拖动走 HTML 标题栏发 __move */
 
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(relayout)
                                                      name:UIDeviceOrientationDidChangeNotification object:nil];
