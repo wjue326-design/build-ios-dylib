@@ -5,7 +5,8 @@ MIN_IOS    ?= 14.0
 USE_DOBBY  ?= 1
 
 DOBBY_INC  := ../third_party/Dobby/include
-DOBBY_LIB  := libs/libdobby.a
+DOBBY_LIB  := libs/libdobby.$(ARCH).a
+DOBBY_LIB_FALLBACK := libs/libdobby.a
 
 CXX        := xcrun --sdk iphoneos clang++
 CXXFLAGS   := -arch $(ARCH) -isysroot $(IOS_SDK) -miphoneos-version-min=$(MIN_IOS) \
@@ -17,10 +18,10 @@ LDFLAGS    := -dynamiclib -arch $(ARCH) -isysroot $(IOS_SDK) -miphoneos-version-
               -Wl,-install_name,@rpath/libXSPlugin.dylib
 ifeq ($(USE_DOBBY),1)
 CXXFLAGS   += -I$(DOBBY_INC)
-LIBS       := $(DOBBY_LIB)
+LIBS       := $(if $(wildcard $(DOBBY_LIB)),$(DOBBY_LIB),$(DOBBY_LIB_FALLBACK))
 endif
-SRC        := XSPlugin.mm XSPanel.mm DnfScan.cpp
-OUT        := libXSPlugin.dylib
+SRC        := XSPlugin.mm XSPanel.mm XSCrash.mm DnfScan.cpp
+OUT        ?= libXSPlugin.dylib
 PANEL_HTML := ../script/index.html
 
 all: XSHTML.h $(OUT)
@@ -34,10 +35,9 @@ XSHTML.h: $(PANEL_HTML)
 
 $(OUT): $(SRC) XSHTML.h
 	$(CXX) $(CXXFLAGS) $(SRC) $(LIBS) $(LDFLAGS) -o $@
-	@echo "built: $(OUT)"
-	@ls -l $(OUT)
+	@echo "built: $(OUT) ($(ARCH))"
 
 clean:
-	rm -f $(OUT) XSHTML.h
+	rm -f libXSPlugin*.dylib XSHTML.h
 
 .PHONY: all clean
