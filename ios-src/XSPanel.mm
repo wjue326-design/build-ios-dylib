@@ -34,7 +34,6 @@ static NSString* const kShim =
 + (instancetype)shared;
 - (void)show;
 - (void)hideToBall;
-- (void)restoreFromBall;
 @end
 
 @implementation XSPanel
