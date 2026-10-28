@@ -52,6 +52,10 @@ done
 lipo -create -output libXSPlugin.dylib libXSPlugin.arm64.dylib libXSPlugin.arm64e.dylib
 echo "   lipo ok"
 
+# ad-hoc 签名：TrollFools / 部分注入器要求 dylib 带签名
+codesign -f -s - libXSPlugin.dylib 2>/dev/null || echo "   (codesign skipped)"
+codesign -dv libXSPlugin.dylib 2>&1 | head -3 || true
+
 echo
 echo "OK -> $ROOT/ios-src/libXSPlugin.dylib"
 echo "注入 cdnf 后进游戏，1.5 秒弹面板；扫拍要手动勾。"
