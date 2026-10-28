@@ -36,7 +36,7 @@ for ARCH in arm64 arm64e; do
 done
 
 echo "== 3/4 生成内嵌 HTML =="
-cd ios-src
+cd "$ROOT/ios-src"
 if command -v xxd >/dev/null 2>&1; then
   xxd -i -n XSHTML_DATA ../script/index.html > XSHTML.h
 else
@@ -44,7 +44,7 @@ else
 fi
 
 echo "== 4/4 编译 dylib（双架构 + lipo） =="
-cd ios-src
+cd "$ROOT/ios-src"
 make clean >/dev/null 2>&1 || true
 for ARCH in arm64 arm64e; do
   make ARCH=$ARCH OUT=libXSPlugin.$ARCH.dylib
