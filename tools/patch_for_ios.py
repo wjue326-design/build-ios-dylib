@@ -84,7 +84,8 @@ def main():
     t = wrap_if0(t, 'static void instrument_class(', 'instrument_class')
 
     # 每个 DobbyHook 调用打点（崩了能定位到行号）
-    t = t.replace('#include "dobby.h"', '#include "dobby.h"\n#include "xs_hooklog.h"')
+    t = t.replace('extern "C" int DobbyHook(void* address, void* replace, void** origin);',
+                  'extern "C" int DobbyHook(void* address, void* replace, void** origin);\n#include "xs_hooklog.h"', 1)
 
     # 暴露一个「重新解析 il2cpp 符号」的入口，供面板在 Unity 就绪后调用
     t = t.replace('extern "C" void dnf_scan_init(void){',
