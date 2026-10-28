@@ -22,10 +22,12 @@ static std::string diag_string(void){
 }
 
 static void* start_thread(void*){
+    xs_crash_note("init", "waiting UnityFramework");
     for (int i = 0; i < 600 && !maps_first_base("UnityFramework"); i++) usleep(200 * 1000);
+    xs_crash_note("init", "UnityFramework found, calling dnf_scan_init");
     dnf_scan_init();
     g_started.store(1);
-    NSLog(@"[XS] dnf_scan_init done, diag=%s", diag_string().c_str());
+    xs_crash_note("init", diag_string().c_str());
     return NULL;
 }
 
@@ -44,7 +46,6 @@ extern "C" char* xs_api_call(const char* reqUtf8){
         json o; o["ok"] = true;
 
         if (cmd == "init") {
-            ensure_started();
             o["data"] = { {"diag", diag_string()}, {"ready", g_started.load() == 1} };
         }
         else if (cmd == "cfg") {
@@ -64,6 +65,7 @@ extern "C" char* xs_api_call(const char* reqUtf8){
             dnf_log_set(d.value("log", false) ? 1 : 0);
             o["data"] = {{"applied", true}};
         }
+        else if (cmd == "initKernel") { ensure_started(); o["data"] = {{"started", true}}; }
         else if (cmd == "start") { dnf_scan_set_enabled(1); o["data"] = {{"started", true}}; }
         else if (cmd == "stop")  { dnf_scan_set_enabled(0); dnf_buy2_set(0); o["data"] = {{"stopped", true}}; }
         else if (cmd == "stats") {
@@ -113,7 +115,7 @@ extern "C" char* xs_api_call(const char* reqUtf8){
 @end
 
 @implementation XSPlugin
-- (instancetype)init { self = [super init]; if (self) ensure_started(); return self; }
+- (instancetype)init { self = [super init]; return self; }
 - (NSString *)api:(NSString *)jsonStr {
     char* r = xs_api_call([jsonStr UTF8String]);
     NSString* s = [NSString stringWithUTF8String:(r ? r : "{\"ok\":false}")];
@@ -122,6 +124,4 @@ extern "C" char* xs_api_call(const char* reqUtf8){
 }
 @end
 
-__attribute__((constructor)) static void xs_onload(void){
-    ensure_started();
-}
+/* 内核 hook 改为手动触发：面板点「扫拍刷新」时才 initKernel（避免进场就装 44 个 hook） */
