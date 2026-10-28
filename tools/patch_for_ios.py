@@ -83,6 +83,13 @@ def main():
     t = wrap_if0(t, 'static void inst_cb(', 'inst_cb')
     t = wrap_if0(t, 'static void instrument_class(', 'instrument_class')
 
+    # 每个 DobbyHook 调用打点（崩了能定位到行号）
+    t = t.replace('#include "dobby.h"', '#include "dobby.h"\n#include "xs_hooklog.h"')
+
+    # 暴露一个「重新解析 il2cpp 符号」的入口，供面板在 Unity 就绪后调用
+    t = t.replace('extern "C" void dnf_scan_init(void){',
+                  'extern "C" void xs_reload_api(void){ onload(); }\n\nextern "C" void dnf_scan_init(void){')
+
     # 构造函数里的自动装 hook 去掉：iOS 由面板手动 initKernel 触发，
     # 否则 constructor 和面板各起一个 init_worker，同一个方法被 DobbyHook 两次 → 必崩
     t = t.replace('pthread_create(&t,NULL,init_worker,NULL);', '/* iOS: 不自动装 hook */')
