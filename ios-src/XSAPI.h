@@ -84,6 +84,7 @@ void     xs_engine_set_interval(int ms);
 void     xs_engine_set_modes(int btn, int search, int sort, int price);
 int      xs_engine_calls(void);
 int      xs_engine_gap(void);
+const char* xs_engine_state(void);
 
 /* 崩溃/进度日志（写到 Documents/xys/crash.log） */
 void     xs_crash_note(const char* tag, const char* detail);
