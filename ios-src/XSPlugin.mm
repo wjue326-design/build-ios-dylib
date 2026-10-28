@@ -48,13 +48,15 @@ extern "C" char* xs_api_call(const char* reqUtf8){
         json o; o["ok"] = true;
 
         if (cmd == "init") {
-            o["data"] = { {"diag", diag_string()}, {"ready", g_started.load() == 1} };
+            o["data"] = { {"diag", xs_engine_ready() ? "engine v" : "engine x"}, {"ready", xs_engine_ready() == 1} };
         }
         else if (cmd == "cfg") {
             json d = req.value("data", json::object());
-            dnf_scan_set_interval_ms(d.value("interval", 1100.0));
+            int ivms = (int)d.value("interval", 1100.0);
+            xs_engine_set_interval(ivms);
             dnf_auto_on_set_ms(d.value("delay", 100));
             json m = d.value("mode", json::object());
+            xs_engine_set_modes(m.value("btn", true), m.value("search", true), m.value("sort", false), m.value("price", false));
             dnf_use_click_set(m.value("btn", true) ? 1 : 0);
             dnf_use_search_set(m.value("search", true) ? 1 : 0);
             dnf_sort_sync_set(m.value("sort", false) ? 1 : 0);
@@ -67,22 +69,26 @@ extern "C" char* xs_api_call(const char* reqUtf8){
             dnf_log_set(d.value("log", false) ? 1 : 0);
             o["data"] = {{"applied", true}};
         }
-        else if (cmd == "initKernel") { ensure_started(); o["data"] = {{"started", true}}; }
-        else if (cmd == "start") { dnf_scan_set_enabled(1); o["data"] = {{"started", true}}; }
-        else if (cmd == "stop")  { dnf_scan_set_enabled(0); dnf_buy2_set(0); o["data"] = {{"stopped", true}}; }
+        else if (cmd == "initKernel") {
+            int ok = xs_engine_init();
+            xs_crash_note("engine", ok ? "init ok" : "init fail");
+            o["data"] = {{"ready", ok == 1}, {"diag", ok ? "engine v" : "engine x"}};
+        }
+        else if (cmd == "start") { xs_engine_start(); o["data"] = {{"started", true}}; }
+        else if (cmd == "stop")  { xs_engine_stop(); o["data"] = {{"stopped", true}}; }
         else if (cmd == "stats") {
             o["data"] = {
-                {"seen",   dnf_seen_count()},
-                {"bought", dnf_buy_count()},
-                {"calls",  dnf_scan_count()},
-                {"parse",  dnf_parse_cnt()},
-                {"cap",    dnf_rs_capture_cnt()},
-                {"det",    dnf_rs_detail_cnt()},
-                {"gap",    dnf_actual_gap_ms()},
+                {"seen",   0},
+                {"bought", 0},
+                {"calls",  xs_engine_calls()},
+                {"parse",  0},
+                {"cap",    0},
+                {"det",    0},
+                {"gap",    xs_engine_gap()},
                 {"page",   dnf_rs_page_found() == 1},
-                {"P",      dnf_rs_page_found() == 1},
-                {"D",      dnf_rs_detail_valid() == 1},
-                {"diag",   diag_string()},
+                {"P",      xs_engine_ready() == 1},
+                {"D",      false},
+                {"diag",   xs_engine_ready() ? "engine v" : "engine x"},
                 {"mode",   {{"btn", dnf_use_click_get() == 1},
                             {"search", dnf_use_search_get() == 1},
                             {"sort", dnf_sort_sync_get() == 1},
