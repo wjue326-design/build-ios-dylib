@@ -50,6 +50,16 @@
   .ft{display:flex;border-top:1px solid var(--line);background:var(--panel)}
   .ft button{flex:1;padding:11px 0;border:0;background:transparent;color:#c9cdd6;font:600 13px inherit}
   .ft button+button{border-left:1px solid var(--line)}
+  /* 横屏小窗（DNF 是横屏，面板高度通常 < 420pt）自动紧凑 */
+  @media (max-height: 460px){
+    .hd{padding:5px 8px 4px}
+    .body{padding:6px 8px 8px}
+    .grp{padding:4px 7px;margin-bottom:4px}
+    .row{min-height:22px}
+    .row+.row{margin-top:2px}
+    .item{padding:4px 0}
+    .stat>div{font-size:10px}
+  }
   #toast{position:fixed;left:50%;bottom:52px;transform:translateX(-50%);background:rgba(20,22,28,.95);
     border:1px solid var(--line);color:#e9ecf2;padding:7px 12px;border-radius:6px;font-size:11px;opacity:0;transition:.15s;pointer-events:none;max-width:90%}
   #toast.on{opacity:1}
