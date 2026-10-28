@@ -10,6 +10,7 @@
 #import <UIKit/UIKit.h>
 #include <dlfcn.h>
 #include <string.h>
+#include <time.h>
 #include <atomic>
 #include "platform_ios.h"
 #include "XSAPI.h"
@@ -43,6 +44,11 @@ static std::atomic<bool> g_mode_price{false};
 static dispatch_source_t g_timer = nil;
 static int64_t g_last_tick_ms = 0;
 static std::atomic<int> g_last_gap{0};
+
+static int64_t xs_now_ms(void) {
+    struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (int64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+}
 
 static void* xs_sym(const char* name) {
     void* p = elf_find_sym(maps_first_base("UnityFramework"), name);
@@ -134,7 +140,7 @@ static int xs_call0(void* cls, void* inst, const char* name) {
 static void xs_tick(void) {
     if (!g_running.load()) return;
     @autoreleasepool {
-        int64_t now = mono_ms();
+        int64_t now = xs_now_ms();
         if (g_last_tick_ms) g_last_gap.store((int)(now - g_last_tick_ms));
         g_last_tick_ms = now;
 
