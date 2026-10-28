@@ -22,12 +22,14 @@ if [ ! -f ios-src/libs/libdobby.a ]; then
   cd third_party/Dobby
   mkdir -p build && cd build
   cmake .. -DCMAKE_SYSTEM_NAME=iOS \
+           -DCMAKE_SYSTEM_PROCESSOR=arm64 \
            -DCMAKE_OSX_ARCHITECTURES=arm64 \
            -DCMAKE_OSX_DEPLOYMENT_TARGET=14.0 \
-           -DCMAKE_BUILD_TYPE=Release \
-           -DDobby.BUILD_STATIC=ON >/dev/null
+           -DCMAKE_BUILD_TYPE=Release
   make -j4
-  cp libdobby.a "$ROOT/ios-src/libs/libdobby.a"
+  LIB=$(find . -name 'libdobby*.a' | head -1)
+  if [ -z "$LIB" ]; then echo "[ERR] Dobby 编完没找到 libdobby.a"; find . -name '*.a' | head; exit 1; fi
+  cp "$LIB" "$ROOT/ios-src/libs/libdobby.a"
   cd "$ROOT"
   echo "   Dobby ok"
 else
