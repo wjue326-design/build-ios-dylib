@@ -124,7 +124,7 @@
         <span class="tag" id="tagP">P:v</span>
         <span class="tag" id="tagD">D:x</span>
       </div>
-      <div class="row sub"><button class="mini acc" id="btnInit">初始化内核</button><span class="dim" id="initHint" style="font-size:10px;margin-left:6px"></span></div>
+      <div class="row sub"><button class="mini acc" id="btnInit">初始化内核</button><button class="mini" id="btnProbe">探针</button><span class="dim" id="initHint" style="font-size:10px;margin-left:6px"></span></div>
       <div class="logbox" id="logbox"></div>
     </div>
 
@@ -167,7 +167,8 @@
     <button id="btnHide">隐藏</button>
     <button id="btnStop">停止</button>
   </div>
-  <div id="toast"></div>
+  <div id="ovl" style="display:none;position:fixed;inset:0;background:#0b0c10;color:#bfe;z-index:99;padding:10px;overflow:auto;font:10px/1.45 ui-monospace,Menlo,monospace;white-space:pre-wrap"></div>
+<div id="toast"></div>
 </div>
 
 <script>
@@ -520,6 +521,15 @@ function bind(){
     $('initHint').textContent = '装 hook 中(约 3s)...';
     log('内核 hook 安装中');
     Bridge.call({ cmd:'initKernel' }, function(r){ log('initKernel -> ' + JSON.stringify(r)); });
+  };
+  $('btnProbe').onclick = function(){
+    var ovl = document.getElementById('ovl');
+    ovl.textContent = '探针读取中...';
+    ovl.style.display = 'block';
+    Bridge.call({cmd:'probe'}, function(r){
+      ovl.textContent = (r && r.ok && r.data && r.data.dump) ? r.data.dump : ('探针失败: ' + JSON.stringify(r));
+    });
+    ovl.onclick = function(){ ovl.style.display = 'none'; };
   };
   $('btnMin').onclick = function(){
     if (Bridge.mode === 'native') { __xsPostCmd('__min'); return; }
