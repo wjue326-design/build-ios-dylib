@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>星源石扫拍 · DNF · iOS H5GG</title>
+<style>
+  :root{
+    --bg:#0f1014; --panel:#16171d; --panel2:#1c1e26; --line:#262933;
+    --txt:#d3d6dd; --dim:#7c808c; --blue:#4f8cff; --green:#4ed07f; --orange:#ffa23c; --red:#ff5c5c;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);
+    font:12px/1.45 -apple-system,"PingFang SC",sans-serif;overflow:hidden}
+  .win{width:100%;height:100%;display:flex;flex-direction:column;background:var(--bg)}
+  .hd{display:flex;align-items:center;padding:8px 10px 6px;border-bottom:1px solid var(--line);background:var(--panel)}
+  .hd .t{font-weight:700;font-size:13px;letter-spacing:.5px}
+  .hd .st{margin-left:auto;font-size:11px;color:var(--green)}
+  .hd .st.off{color:var(--dim)}
+  .body{flex:1;overflow-y:auto;padding:8px 10px 8px;background:var(--panel2)}
+  .grp{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 8px;margin-bottom:6px}
+  .row{display:flex;align-items:center;gap:6px;min-height:26px}
+  .row+.row{margin-top:3px}
+  .sub{padding-left:16px}
+  .cb{display:flex;align-items:center;gap:6px;cursor:pointer}
+  .cb i{width:15px;height:15px;border:1px solid #4a4f5d;border-radius:3px;display:inline-block;position:relative;background:#101116}
+  .cb.on i{background:var(--blue);border-color:var(--blue)}
+  .cb.on i:after{content:"";position:absolute;left:4px;top:1px;width:5px;height:9px;border:2px solid #fff;border-top:0;border-left:0;transform:rotate(42deg)}
+  .lab{font-size:12px;color:var(--txt)}
+  .dim{color:var(--dim)}
+  .sp{flex:1}
+  .val{min-width:56px;text-align:center;background:#0b0c10;border:1px solid var(--line);border-radius:4px;padding:2px 4px;color:#fff;font-variant-numeric:tabular-nums}
+  .mini{padding:1px 7px;border:1px solid var(--line);border-radius:4px;background:#22252e;color:#cfd3dc;font-size:11px;line-height:18px}
+  .mini:active{background:#2e323d}
+  .mini.acc{border-color:#2d4d8a;background:#1b2b47;color:#9ec2ff}
+  .mini.warn{border-color:#5b4317;background:#2a2113;color:var(--orange)}
+  .tag{font-size:10px;padding:0 5px;border-radius:3px;background:#1d2432;color:#7aa3e8}
+  .tag.ok{color:var(--green);background:#13251a}
+  .tag.no{color:var(--red);background:#2a1414}
+  .hr{height:1px;background:var(--line);margin:6px 0}
+  .stat{display:flex;gap:0;font-variant-numeric:tabular-nums}
+  .stat>div{flex:1;text-align:center;font-size:11px;color:var(--dim);white-space:nowrap}
+  .stat b{color:var(--txt);font-weight:600}
+  .stat b.g{color:var(--green)} .stat b.o{color:var(--orange)}
+  .keypad{display:none;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:5px}
+  .keypad.on{display:grid}
+  .keypad button{padding:9px 0;background:#22252e;border:1px solid var(--line);border-radius:5px;color:#e6e9ef;font-size:15px}
+  .keypad button:active{background:var(--blue)}
+  .ft{display:flex;border-top:1px solid var(--line);background:var(--panel)}
+  .ft button{flex:1;padding:11px 0;border:0;background:transparent;color:#c9cdd6;font:600 13px inherit}
+  .ft button+button{border-left:1px solid var(--line)}
+  #toast{position:fixed;left:50%;bottom:52px;transform:translateX(-50%);background:rgba(20,22,28,.95);
+    border:1px solid var(--line);color:#e9ecf2;padding:7px 12px;border-radius:6px;font-size:11px;opacity:0;transition:.15s;pointer-events:none;max-width:90%}
+  #toast.on{opacity:1}
+  .logbox{display:none;height:76px;overflow:auto;background:#0a0b0f;border:1px solid var(--line);border-radius:5px;
+    padding:5px 6px;margin-top:4px;font:10px/1.5 ui-monospace,Menlo,monospace;color:#8fd6a3;white-space:pre-wrap}
+  .logbox.on{display:block}
+</style>
+</head>
+<body>
+<div class="win">
+  <div class="hd">
+    <div class="t">星源石扫拍系统</div>
+    <div class="st off" id="runState">o 待机</div>
+  </div>
+
+  <div class="body" id="body">
+    <div class="grp">
+      <div class="row">
+        <div class="cb" id="sw_scan"><i></i><span class="lab">扫拍刷新</span></div>
+        <div class="sp"></div>
+        <div class="dim" id="runTime" style="font-size:11px">已停止</div>
+      </div>
+
+      <div class="row sub">
+        <span class="dim">刷新间隔</span>
+        <div class="val" id="ivVal">1.10</div>
+        <span class="dim">s</span>
+        <div class="sp"></div>
+        <button class="mini" id="btnKey">键盘</button>
+        <button class="mini" id="btnMinus">−</button>
+        <button class="mini" id="btnPlus">+</button>
+      </div>
+      <div class="keypad" id="keypad"></div>
+
+      <div class="row sub">
+        <span class="dim">方式</span>
+        <div class="cb on" id="m_btn"><i></i><span class="lab">按钮</span></div>
+        <div class="cb on" id="m_search"><i></i><span class="lab">搜索</span></div>
+        <div class="cb" id="m_sort"><i></i><span class="lab">排序</span></div>
+        <div class="cb" id="m_price"><i></i><span class="lab">价格</span></div>
+      </div>
+
+      <div class="row sub">
+        <span class="dim">定时</span>
+        <div class="val" id="dlVal" style="min-width:44px">0.10</div>
+        <span class="dim">s</span>
+        <button class="mini" id="dlMinus">−</button>
+        <button class="mini" id="dlPlus">+</button>
+        <div class="sp"></div>
+        <span class="dim" style="font-size:11px" id="dlState"></span>
+      </div>
+
+      <div class="row sub">
+        <span class="dim">参数捕获</span><b id="capVal">0</b>
+        <span class="dim">/ 详细</span><b id="detVal">0</b>
+        <button class="mini" id="btnClear">清零</button>
+        <div class="sp"></div>
+        <span class="tag" id="tagP">P:v</span>
+        <span class="tag" id="tagD">D:x</span>
+      </div>
+      <div class="logbox" id="logbox"></div>
+    </div>
+
+    <div class="grp">
+      <div class="row">
+        <div class="cb" id="sw_limit"><i></i><span class="lab">限购控制</span></div>
+        <button class="mini" id="limMinus">−</button>
+        <div class="val" id="limVal" style="min-width:40px">10</div>
+        <button class="mini" id="limPlus">+</button>
+        <span class="dim">件</span>
+      </div>
+      <div class="row">
+        <div class="cb" id="sw_buy"><i></i><span class="lab">自动购买</span></div>
+        <div class="sp"></div>
+        <div class="cb" id="sw_tip"><i></i><span class="lab">提示拦截</span></div>
+      </div>
+      <div class="row">
+        <span class="dim">校准</span>
+        <button class="mini acc" id="btnCalS">记排序</button>
+        <button class="mini acc" id="btnCalP">记价格</button>
+        <div class="sp"></div>
+        <span class="tag" id="tagCalS">时O</span>
+        <span class="tag" id="tagCalP">价O</span>
+      </div>
+    </div>
+
+    <div class="grp">
+      <div class="stat"><div>扫到 <b id="stSeen">0</b> 件</div><div>已购 <b id="stBuy">0</b> 件</div><div id="stLimitWrap">限购 <b id="stLimit" class="dim">未开</b></div></div>
+      <div class="stat" style="margin-top:2px"><div>扫拍 <b id="stCalls">0</b> 次</div><div>实距 <b id="stGap">--</b> ms</div><div>解析 <b id="stParse" class="o">0</b> 次</div></div>
+      <div class="row" style="margin-top:4px">
+        <span class="dim" style="font-size:10px" id="diag">初始化 --</span>
+        <div class="sp"></div>
+        <div class="cb on" id="sw_jitter"><i></i><span class="lab" style="font-size:11px">抖动</span></div>
+        <div class="cb" id="sw_log"><i></i><span class="lab" style="font-size:11px">日志</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ft">
+    <button id="btnHide">隐藏</button>
+    <button id="btnStop">停止</button>
+  </div>
+  <div id="toast"></div>
+</div>
+
+<script>
+/* ============================================================================
+ *  星源石扫拍 · DNF手游 · iOS / H5GG 移植版
+ *
+ *  分工:
+ *    H5GG(本文件)  = 面板 UI + 状态机 + 规则校验 + 统计展示
+ *    XSPlugin.dylib = il2cpp 绑定 + 16 个 hook + 四方式调用 + 购买 + 解析
+ *    协议: XSPlugin.api(jsonString) -> jsonString   （见 doc/内核接口契约.md）
+ * ========================================================================== */
+if (typeof h5gg !== 'undefined') { try { h5gg.require(6.4); } catch(e){} }
+else { console.warn('[XYS] 非 H5GG 环境, 仅预览 UI'); }
+
+/* ------------------------------ 常量/工具 ------------------------------ */
+var IV_MIN = 0.01, IV_MAX = 60.00, IV_STEP = 0.10, IV_DEF = 1.10;
+var DL_MIN = 0.10, DL_MAX = 1.00, DL_STEP = 0.10, DL_DEF = 0.10;
+var $ = function(id){ return document.getElementById(id); };
+var toastT = 0;
+function toast(m){ var t=$('toast'); t.textContent=m; t.className='on'; clearTimeout(toastT); toastT=setTimeout(function(){ t.className=''; },1500); }
+function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+function fmt2(v){ return (Math.round(v*100)/100).toFixed(2); }
+function fmtDur(ms){ var s=Math.floor(ms/1000), d=Math.floor(s/86400), h=Math.floor(s%86400/3600), m=Math.floor(s%3600/60), ss=s%60;
+  return d+'天'+('0'+h).slice(-2)+':'+('0'+m).slice(-2)+':'+('0'+ss).slice(-2); }
+
+/* ------------------------------ 内核桥 (XSPlugin.dylib) ------------------------------ */
+var __xsSeq = 0, __xsCbs = {};
+var Bridge = {
+  obj: null, ok: false, mode: 'none',      /* 'native' | 'h5gg' | 'none' */
+  init: function(){
+    /* ① dylib 自带面板（单文件方案）: 原生注入 window.__XS_NATIVE__ + 消息通道 */
+    if (window.__XS_NATIVE__ && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.xs) {
+      Bridge.mode = 'native'; Bridge.ok = true; return true;
+    }
+    /* ② H5GG 宿主: loadPlugin */
+    if (typeof h5gg !== 'undefined') {
+      try { Bridge.obj = h5gg.loadPlugin('XSPlugin', 'libXSPlugin.dylib'); if (Bridge.obj) { Bridge.mode = 'h5gg'; Bridge.ok = true; return true; } }
+      catch(e){}
+    }
+    Bridge.mode = 'none'; Bridge.ok = false; return false;
+  },
+  call: function(o, cb){
+    if (Bridge.mode === 'h5gg') {
+      var s = null;
+      try { s = Bridge.obj.api(JSON.stringify(o)); } catch(e){}
+      var r = s ? JSON.parse(s) : null;
+      if (cb) cb(r);
+      return r;
+    }
+    if (Bridge.mode === 'native') {
+      var id = ++__xsSeq; __xsCbs[id] = cb || null;
+      try { window.__xs_post({ id: id, req: o }); } catch(e){}
+      return null;
+    }
+    return null;
+  }
+};
+/* 原生回调 */
+window.__xs_on_result = function(id, res){ var cb = __xsCbs[id]; delete __xsCbs[id]; if (cb) cb(res); };
+window.__xs_on_stats = function(res){
+  if (res && res.ok && res.data) {
+    S.st = Object.assign(S.st, res.data);
+    if (res.data.mode) { S.mode = res.data.mode; renderModes(); }
+  }
+};
+
+/* ------------------------------ 状态 ------------------------------ */
+var S = {
+  scanning: false,
+  interval: IV_DEF,          /* 秒 */
+  delay: DL_DEF,             /* 定时开启, 秒 */
+  pendingAt: 0,              /* 定时到点时间戳 */
+  runAccum: 0, runStart: 0,
+  mode: { btn:true, search:true, sort:false, price:false },
+  limitOn: false, limitNum: 10, limitBase: 0,
+  buy: false, tip: false, log: false,
+  jitter: true,          /* 间隔抖动 ±15%: 躲 B6「时间-事件一致性」检测 */
+  effIv: IV_DEF, lastJit: 0,   /* 当前实际下发的间隔 / 上次抖动时间 */
+  calS: 0, calP: 0,
+  /* 内核回传 */
+  st: { seen:0, bought:0, calls:0, parse:0, cap:0, det:0, gap:0, page:false, P:false, D:false, diag:'--' },
+  seenBase: 0, seenBaseSet: false
+};
+
+/* ------------------------------ 规则: 刷新方式 ------------------------------ */
+/* 排序/价格 只是本地重排, 不产生新数据 → 不能单独当刷新方式 */
+function realModes(){ return (S.mode.btn?1:0) + (S.mode.search?1:0); }
+function anyMode(){ return realModes() + (S.mode.sort?1:0) + (S.mode.price?1:0); }
+
+/* 四个入口统一校验: 面板勾选/内核开启/定时到点/方式取消 */
+function ensureUseMode(from){
+  /* 与源码 ensure_use_mode() 一致: 四种全关时只补「搜索」(旧文档写补按钮+搜索, 代码只补搜索) */
+  if (anyMode() === 0) { S.mode.search = true; log('方式全关 → 自动补 搜索 (' + from + ')'); }
+  /* 面板侧安全策略: 只勾排序/价格时补搜索, 保证每轮都有真刷新(源码由 scan_tick 直接 return 兜底) */
+  else if (realModes() === 0) { S.mode.search = true; log('只勾排序/价格 → 补 搜索 (' + from + ')'); }
+  renderModes();
+}
+/* 扫拍运行中取消最后一种方式 → 自动关闭扫拍 */
+function guardModes(){
+  if (S.scanning && anyMode() === 0) { stopScan('方式全关'); }
+}
+
+/* ------------------------------ 扫拍启停 ------------------------------ */
+function startScan(from){
+  if (S.scanning) return;
+  ensureUseMode(from || 'start');
+  S.pendingAt = Date.now() + Math.round(S.delay * 1000);
+  S.started = false;
+  S.runStart = Date.now();
+  S.scanning = true;
+  log('扫拍 启动中 ' + fmt2(S.delay) + 's');
+  pushCfg();
+  Bridge.call({ cmd:'start' });   /* 定时由内核 g_auto_on_ms 掌握, 面板只做显示 */
+}
+function stopScan(reason){
+  if (!S.scanning) return;
+  if (S.runStart) S.runAccum += Date.now() - S.runStart;
+  S.scanning = false; S.started = false; S.pendingAt = 0;
+  log('扫拍 已停止' + (reason ? ' (' + reason + ')' : ''));
+  pushCfg();
+  Bridge.call({ cmd:'stop' });
+}
+
+/* ------------------------------ 配置下发 ------------------------------ */
+function cfg(){
+  /* 抖动: 每轮下发前在 ±15% 内重摇一次, 内核按新间隔跑 */
+  var iv = S.interval;
+  if (S.jitter) iv = clamp(iv * (1 + (Math.random() * 0.30 - 0.15)), IV_MIN, IV_MAX);
+  S.effIv = iv;
+  return {
+    interval: Math.round(iv * 1000),
+    delay: Math.round(S.delay * 1000),
+    mode: S.mode, limit: S.limitOn ? S.limitNum : 0,
+    buy: S.buy, tip: S.tip, log: S.log
+  };
+}
+function pushCfg(){ S.lastJit = Date.now(); Bridge.call({ cmd:'cfg', data: cfg() }); }
+
+/* ------------------------------ 内核轮询 ------------------------------ */
+function poll(){
+  if (Bridge.mode === 'native') return;          /* 原生每 200ms 推 __xs_on_stats */
+  var r = Bridge.call({ cmd:'stats' });
+  if (r && r.ok) {
+    S.st = Object.assign(S.st, r.data);
+    if (r.data.mode) { S.mode = r.data.mode; renderModes(); }   /* 内核回读: 自动补的默认值必须显示出来 */
+    /* 首页缓存基线由内核算(scan_tick 里记 g_seen_base), 面板不重复扣 */
+  } else if (!Bridge.ok) {
+    /* 无内核: 本地模拟, 保证 UI 可演示 */
+    if (S.scanning && S.started) {
+      var dt = Date.now() - (S.lastSim || Date.now()); S.lastSim = Date.now();
+      S.st.calls += 1; S.st.gap = Math.round(S.interval*1000);
+      if (Math.random() < 0.35) S.st.parse += 1;
+      if (Math.random() < 0.10) S.st.seen += 1;
+      void dt;
+    }
+    S.st.diag = '内核未连接';
+  }
+}
+
+/* ------------------------------ 渲染 ------------------------------ */
+function renderModes(){
+  [['m_btn','btn'],['m_search','search'],['m_sort','sort'],['m_price','price']].forEach(function(p){
+    $(p[0]).className = 'cb' + (S.mode[p[1]] ? ' on' : '');
+  });
+}
+function renderCb(id, on){ $(id).className = 'cb' + (on ? ' on' : ''); }
+
+function render(){
+  /* 顶部状态 */
+  var running = S.scanning && (Date.now() >= S.pendingAt);
+  $('runState').textContent = running ? '* 运行中' : (S.scanning ? '... 启动中' : 'o 待机');
+  $('runState').className = 'st' + (running ? '' : ' off');
+
+  /* 运行时长/三态 */
+  var rt;
+  if (S.scanning && !running) rt = '启动中 ' + fmt2((S.pendingAt - Date.now())/1000) + 's';
+  else if (running) rt = '运行 ' + fmtDur(S.runAccum + (Date.now() - S.runStart));
+  else rt = '已停止';
+  $('runTime').textContent = rt;
+  $('dlState').textContent = S.scanning && !running ? '等待中' : (running ? '已启动' : '');
+
+  renderCb('sw_scan', S.scanning);
+  renderCb('sw_limit', S.limitOn);
+  renderCb('sw_buy', S.buy);
+  renderCb('sw_tip', S.tip);
+  renderCb('sw_jitter', S.jitter);
+  renderCb('sw_log', S.log);
+  S.log ? $('logbox').classList.add('on') : $('logbox').classList.remove('on');
+
+  $('ivVal').textContent = S.jitter && running ? fmt2(S.effIv) : fmt2(S.interval);
+  $('dlVal').textContent = fmt2(S.delay);
+  $('limVal').textContent = S.limitNum;
+  $('capVal').textContent = S.st.cap;
+  $('detVal').textContent = S.st.det;
+  $('tagP').textContent = 'P:' + (S.st.P ? 'v' : 'x');
+  $('tagP').className = 'tag ' + (S.st.P ? 'ok' : 'no');
+  $('tagD').textContent = 'D:' + (S.st.D ? 'v' : 'x');
+  $('tagD').className = 'tag ' + (S.st.D ? 'ok' : 'no');
+  $('tagCalS').textContent = '时' + (S.calS ? 'O' : 'O');
+  $('tagCalS').className = 'tag ' + (S.calS ? 'ok' : '');
+  $('tagCalP').className = 'tag ' + (S.calP ? 'ok' : '');
+
+  $('stSeen').textContent = Math.max(0, S.st.seen);
+  $('stBuy').textContent = S.st.bought;
+  if (S.limitOn) { $('stLimit').textContent = S.st.bought + ' / ' + S.limitNum; $('stLimit').className = ''; }
+  else { $('stLimit').textContent = '未开'; $('stLimit').className = 'dim'; }
+  $('stCalls').textContent = S.st.calls;
+  $('stGap').textContent = S.st.gap || '--';
+  $('stParse').textContent = S.st.parse;
+  $('stParse').className = S.st.parse > 0 ? 'g' : 'o';
+  $('diag').textContent = '初始化 ' + (S.st.diag || '--');
+}
+
+/* ------------------------------ 数字键盘 ------------------------------ */
+function buildKeypad(){
+  var kp = $('keypad'); kp.innerHTML = '';
+  ['1','2','3','4','5','6','7','8','9','.','0','⌫'].forEach(function(k){
+    var b = document.createElement('button'); b.textContent = k; b.onclick = function(){ keypadInput(k); };
+    kp.appendChild(b);
+  });
+}
+var kbuf = '';
+function keypadInput(k){
+  if (k === '⌫') kbuf = kbuf.slice(0, -1); else kbuf += k;
+  var v = parseFloat(kbuf);
+  if (!isNaN(v)) { $('ivVal').textContent = kbuf || '0'; }
+  if (kbuf.length >= 6) commitKeypad();
+}
+function commitKeypad(){
+  var v = parseFloat(kbuf);
+  kbuf = '';
+  $('keypad').classList.remove('on');
+  if (isNaN(v)) { toast('输入无效'); return; }
+  S.interval = clamp(v, IV_MIN, IV_MAX);
+  pushCfg(); toast('间隔 ' + fmt2(S.interval) + ' s');
+}
+
+/* ------------------------------ 长按加减 ------------------------------ */
+function holdBind(el, stepFn){
+  var t1 = 0, t2 = 0;
+  function start(e){
+    e.preventDefault();
+    stepFn();
+    t1 = setTimeout(function(){ t2 = setInterval(stepFn, 60); }, 420);
+  }
+  function end(){ clearTimeout(t1); clearInterval(t2); }
+  el.addEventListener('touchstart', start, {passive:false});
+  el.addEventListener('touchend', end); el.addEventListener('touchcancel', end);
+  el.addEventListener('mousedown', start); el.addEventListener('mouseup', end); el.addEventListener('mouseleave', end);
+}
+
+/* ------------------------------ 拖动窗(原生面板) ------------------------------ */
+function __xsPostCmd(cmd, extra){
+  if (Bridge.mode !== 'native') return;
+  var o = Object.assign({ cmd: cmd }, extra || {});
+  try { window.__xs_post({ id: ++__xsSeq, req: o }); } catch(e){}
+}
+(function bindDrag(){
+  var hd = document.querySelector('.hd'), last = null, acc = {x:0, y:0}, timer = 0;
+  function start(x, y){ last = {x:x, y:y}; acc = {x:0, y:0}; }
+  function move(x, y){
+    if (!last) return;
+    acc.x += x - last.x; acc.y += y - last.y; last = {x:x, y:y};
+    if (timer) return;
+    timer = setTimeout(function(){
+      timer = 0;
+      if (acc.x || acc.y) { __xsPostCmd('__move', { dx: acc.x, dy: acc.y }); acc = {x:0,y:0}; }
+    }, 16);
+  }
+  function end(){ last = null; }
+  hd.addEventListener('touchstart', function(e){ var t = e.touches[0]; start(t.clientX, t.clientY); }, {passive:true});
+  hd.addEventListener('touchmove', function(e){ var t = e.touches[0]; move(t.clientX, t.clientY); }, {passive:true});
+  hd.addEventListener('touchend', end);
+  hd.addEventListener('mousedown', function(e){ start(e.clientX, e.clientY); });
+  document.addEventListener('mousemove', function(e){ if (last) move(e.clientX, e.clientY); });
+  document.addEventListener('mouseup', end);
+})();
+
+/* ------------------------------ 日志 ------------------------------ */
+function log(s){
+  var t = new Date(), ts = ('0'+t.getHours()).slice(-2)+':'+('0'+t.getMinutes()).slice(-2)+':'+('0'+t.getSeconds()).slice(-2);
+  console.log('[XYS] ' + s);
+  var box = $('logbox'); if (box) { box.textContent += ts + '  ' + s + '\n'; box.scrollTop = box.scrollHeight; }
+  if (S.log) Bridge.call({ cmd:'log', data:s });
+}
+
+/* ------------------------------ 事件绑定 ------------------------------ */
+function bind(){
+  $('sw_scan').onclick = function(){
+    if (!S.scanning) startScan('panel'); else stopScan('panel');
+  };
+  $('sw_limit').onclick = function(){
+    S.limitOn = !S.limitOn;
+    if (S.limitOn) S.limitBase = S.st.bought;   /* 基线: 开启时已购数 */
+    Bridge.call({ cmd:'limitOn', data:{ on:S.limitOn, base:S.limitBase, num:S.limitNum } });
+    pushCfg();
+  };
+  $('sw_buy').onclick = function(){ S.buy = !S.buy; pushCfg(); };
+  $('sw_tip').onclick = function(){ S.tip = !S.tip; pushCfg(); };
+  $('sw_jitter').onclick = function(){ S.jitter = !S.jitter; pushCfg(); log('间隔抖动 ' + (S.jitter?'开 ±15%':'关')); };
+  $('sw_log').onclick = function(){ S.log = !S.log; pushCfg(); log('日志 ' + (S.log?'开':'关')); };
+
+  [['m_btn','btn'],['m_search','search'],['m_sort','sort'],['m_price','price']].forEach(function(p){
+    $(p[0]).onclick = function(){
+      S.mode[p[1]] = !S.mode[p[1]];
+      renderModes();
+      guardModes();
+      if (S.scanning) ensureUseMode('mode-change');
+      pushCfg();
+    };
+  });
+
+  $('btnKey').onclick = function(){ kbuf = fmt2(S.interval); $('keypad').classList.toggle('on'); };
+  holdBind($('btnMinus'), function(){ S.interval = clamp(Math.round((S.interval-IV_STEP)*100)/100, IV_MIN, IV_MAX); pushCfg(); });
+  holdBind($('btnPlus'), function(){ S.interval = clamp(Math.round((S.interval+IV_STEP)*100)/100, IV_MIN, IV_MAX); pushCfg(); });
+  holdBind($('dlMinus'), function(){ S.delay = clamp(Math.round((S.delay-DL_STEP)*100)/100, DL_MIN, DL_MAX); pushCfg(); });
+  holdBind($('dlPlus'), function(){ S.delay = clamp(Math.round((S.delay+DL_STEP)*100)/100, DL_MIN, DL_MAX); pushCfg(); });
+
+  $('limMinus').onclick = function(){ S.limitNum = Math.max(1, S.limitNum-1); pushCfg(); };
+  $('limPlus').onclick = function(){ S.limitNum = Math.min(999, S.limitNum+1); pushCfg(); };
+
+  $('btnClear').onclick = function(){ S.st.cap = 0; S.st.det = 0; Bridge.call({cmd:'clearCap'}); toast('已清零'); };
+  $('btnCalS').onclick = function(){
+    Bridge.call({cmd:'calibSort'}, function(r){
+      if (r && r.ok && r.data && r.data.field) { S.calS = r.data.field; toast('排序 field 已记'); }
+      else toast('未捕获到 field');
+      pushCfg();
+    });
+  };
+  $('btnCalP').onclick = function(){
+    Bridge.call({cmd:'calibPrice'}, function(r){
+      if (r && r.ok && r.data && r.data.field) { S.calP = r.data.field; toast('价格 field 已记'); }
+      else toast('未捕获到 field');
+      pushCfg();
+    });
+  };
+  $('btnStop').onclick = function(){ stopScan('manual'); S.buy=false; render(); toast('已停止'); };
+  $('btnHide').onclick = function(){
+    if (Bridge.mode === 'native') { __xsPostCmd('__hide'); return; }
+    try { h5gg.setWindowVisible(false); } catch(e){ toast('非 H5GG 环境'); }
+  };
+}
+
+/* ------------------------------ 主循环 ------------------------------ */
+function loop(){
+  if (S.scanning && !S.started && Date.now() >= S.pendingAt) {
+    S.started = true;
+    S.runStart = Date.now();
+    log('扫拍 已启动, 间隔 ' + fmt2(S.interval) + 's');
+  }
+  /* 抖动: 每隔 3~8 秒重摇一次间隔(内核每 tick 读 g_scan_interval_us, 立刻生效) */
+  if (S.jitter && S.started && Date.now() - S.lastJit > 3000 + Math.random() * 5000) pushCfg();
+  poll();
+  render();
+  requestAnimationFrame(loop);
+}
+
+/* ------------------------------ 启动 ------------------------------ */
+(function boot(){
+  buildKeypad();
+  bind();
+  renderModes();
+  var ok = Bridge.init();
+  log('内核 ' + (ok ? ('已连接 [' + Bridge.mode + ']') : '未连接 (仅 UI)'));
+  try { h5gg.setWindowRect(34, 56, 440, 620); } catch(e){}
+  try { h5gg.setButtonAction(function(){ h5gg.setWindowVisible(true); }); } catch(e){}
+  pushCfg();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
