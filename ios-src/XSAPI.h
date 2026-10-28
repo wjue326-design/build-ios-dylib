@@ -74,6 +74,9 @@ void     dnf_scan_set_delay_ms(int ms);      /* 新增: 定时开启(与 auto_on
  */
 char*    xs_api_call(const char* json);
 
+/* 崩溃/进度日志（写到 Documents/xys/crash.log） */
+void     xs_crash_note(const char* tag, const char* detail);
+
 /* 启动 dylib 里的悬浮面板（UIKit + 内嵌 HTML） */
 void     xs_panel_show(void);
 
