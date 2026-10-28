@@ -43,18 +43,15 @@ else
   python3 -c "d=open('../script/index.html','rb').read();print('unsigned char XSHTML_DATA[] = {'+','.join(str(b) for b in d)+'};');print('unsigned int XSHTML_DATA_len = %d;'%len(d))" > XSHTML.h
 fi
 
-echo "== 4/4 编译 dylib（双架构 + lipo） =="
+echo "== 4/4 编译 dylib（两个瘦架构，不做 fat） =="
 cd "$ROOT/ios-src"
 make clean >/dev/null 2>&1 || true
 for ARCH in arm64 arm64e; do
   make ARCH=$ARCH OUT=libXSPlugin.$ARCH.dylib
+  codesign -f -s - "libXSPlugin.$ARCH.dylib" 2>/dev/null || echo "   (codesign skipped $ARCH)"
+  echo "   $ARCH -> libXSPlugin.$ARCH.dylib ($(stat -f%z libXSPlugin.$ARCH.dylib) bytes)"
 done
-lipo -create -output libXSPlugin.dylib libXSPlugin.arm64.dylib libXSPlugin.arm64e.dylib
-echo "   lipo ok"
-
-# ad-hoc 签名：TrollFools / 部分注入器要求 dylib 带签名
-codesign -f -s - libXSPlugin.dylib 2>/dev/null || echo "   (codesign skipped)"
-codesign -dv libXSPlugin.dylib 2>&1 | head -3 || true
+echo "   注意：TrollFools 对 fat 二进制支持差，所以这里出两个瘦包，按设备选一个注入"
 
 echo
 echo "OK -> $ROOT/ios-src/libXSPlugin.dylib"
