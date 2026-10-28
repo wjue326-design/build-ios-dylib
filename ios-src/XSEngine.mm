@@ -145,8 +145,10 @@ static void* xs_find_page(void) {
     }
     if (inst) {
         g_page_inst = inst;
-        xs_state("page found");
+        xs_state("running | page ok");
         char b[96]; snprintf(b, sizeof(b), "page inst=%p", inst); xs_crash_note("engine", b);
+    } else {
+        xs_state("running | no page");
     }
     return inst;
 }
@@ -170,6 +172,9 @@ static void xs_tick(void) {
         void* page = xs_find_page();
         if (!page) {
             int f = g_fail_ticks.fetch_add(1) + 1;
+            {
+                char st[96]; snprintf(st, sizeof(st), "running | no page | ticks=%d", f); xs_state(st);
+            }
             if (f == 1 || f % 30 == 0) {
                 char b[160]; snprintf(b, sizeof(b), "no page (tries=%d, state=%s)", f, g_state);
                 xs_crash_note("engine", b);
@@ -185,6 +190,9 @@ static void xs_tick(void) {
             if (r2 != 0) { r2 = xs_call0(g_cls_page, page, "OnClickEnter_Search"); }
         }
         g_calls.fetch_add(1);
+        {
+            char st[96]; snprintf(st, sizeof(st), "running | page ok | called=%d", g_calls.load()); xs_state(st);
+        }
         if (g_calls.load() <= 3) {
             char b[120]; snprintf(b, sizeof(b), "tick#%d refresh=%d search=%d", g_calls.load(), r1, r2);
             xs_crash_note("engine", b);
