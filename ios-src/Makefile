@@ -20,7 +20,7 @@ ifeq ($(USE_DOBBY),1)
 CXXFLAGS   += -I$(DOBBY_INC)
 LIBS       := $(if $(wildcard $(DOBBY_LIB)),$(DOBBY_LIB),$(DOBBY_LIB_FALLBACK))
 endif
-SRC        := XSPlugin.mm XSPanel.mm XSCrash.mm DnfScan.cpp
+SRC        := XSPlugin.mm XSPanel.mm XSCrash.mm XSEngine.mm DnfScan.cpp
 OUT        ?= libXSPlugin.dylib
 PANEL_HTML := ../script/index.html
 
