@@ -99,7 +99,7 @@ extern "C" char* xs_api_call(const char* reqUtf8){
         else { o = {{"ok", false}, {"err", "unknown-cmd"}}; }
 
         out = o.dump();
-    } @catch (...) {
+    } catch (...) {
         out = R"({"ok":false,"err":"exception"})";
     }
     char* r = (char*)malloc(out.size() + 1);
