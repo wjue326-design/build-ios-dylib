@@ -79,6 +79,10 @@ def main():
     t = wrap_if0(t, 'static void* maps_first_base(', 'maps_first_base')
     t = wrap_if0(t, 'static void* elf_find_sym(', 'elf_find_sym')
 
+    # DobbyInstrument 相关：源码里没有被调用（死代码），iOS 上类型定义不同，整段屏蔽
+    t = wrap_if0(t, 'static void inst_cb(', 'inst_cb')
+    t = wrap_if0(t, 'static void instrument_class(', 'instrument_class')
+
     t = t.replace('"libil2cpp.so"', '"UnityFramework"')
     t = t.replace('/data/data/com.tencent.tmgp.dnf/files/', '/var/mobile/Documents/xys/')
     t = t.replace('/sdcard/DCIM/Screenshots/', '/var/mobile/Media/DCIM/')
