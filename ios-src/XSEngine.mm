@@ -22,7 +22,7 @@ static void* (*p_runtime_invoke)(void*, void*, void**, void**);
 static void* (*p_string_new)(void*, const char*);
 static void* (*p_object_new)(void*);
 static void* (*p_object_get_class)(void*);
-static void** (*p_class_get_fields)(void*, void**);
+static void* (*p_class_get_fields)(void*, void**);
 static const char* (*p_field_get_name)(void*);
 static int (*p_field_get_offset)(void*);
 static const char* (*p_class_get_name)(void*);
@@ -74,7 +74,7 @@ extern "C" int xs_engine_init(void) {
         p_class_get_type          = (void*(*)(void*))xs_sym("il2cpp_class_get_type");
         p_type_get_object         = (void*(*)(void*))xs_sym("il2cpp_type_get_object");
         p_object_get_class        = (void*(*)(void*))xs_sym("il2cpp_object_get_class");
-        p_class_get_fields        = (void**(*)(void*, void**))xs_sym("il2cpp_class_get_fields");
+        p_class_get_fields        = (void*(*)(void*, void**))xs_sym("il2cpp_class_get_fields");
         p_field_get_name          = (const char*(*)(void*))xs_sym("il2cpp_field_get_name");
         p_field_get_offset        = (int(*)(void*))xs_sym("il2cpp_field_get_offset");
         p_class_get_name          = (const char*(*)(void*))xs_sym("il2cpp_class_get_name");
@@ -260,10 +260,10 @@ extern "C" char* xs_engine_probe(void) {
         char b[320];
         snprintf(b, sizeof(b), "class=%s inst=%p\n", p_class_get_name ? p_class_get_name(cls) : "?", page);
         out += b;
-        void** iter = NULL; void* field = NULL; int n = 0;
+        void* iter = NULL; const void* field = NULL; int n = 0;
         while ((field = p_class_get_fields(cls, &iter)) && n < 60) {
-            const char* fname = p_field_get_name ? p_field_get_name(field) : "?";
-            int off = p_field_get_offset ? p_field_get_offset(field) : -1;
+            const char* fname = p_field_get_name ? p_field_get_name((void*)field) : "?";
+            int off = p_field_get_offset ? p_field_get_offset((void*)field) : -1;
             void* val = (off >= 0 && off < 0x1000) ? *(void**)((char*)page + off) : NULL;
             const char* vcls = "-";
             if (val && p_object_get_class) {
