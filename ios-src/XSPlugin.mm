@@ -24,7 +24,9 @@ static std::string diag_string(void){
 static void* start_thread(void*){
     xs_crash_note("init", "waiting UnityFramework");
     for (int i = 0; i < 600 && !maps_first_base("UnityFramework"); i++) usleep(200 * 1000);
-    xs_crash_note("init", "UnityFramework found, calling dnf_scan_init");
+    xs_crash_note("init", "UnityFramework found, reloading il2cpp api");
+    xs_reload_api();
+    xs_crash_note("init", "api reloaded, calling dnf_scan_init");
     dnf_scan_init();
     g_started.store(1);
     xs_crash_note("init", diag_string().c_str());
