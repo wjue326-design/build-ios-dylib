@@ -1,4 +1,4 @@
-// XSPanel.mm v4 —— 强重试 + 全链路日志 + 加载失败兜底
+// XSPanel.mm v5 —— 按屏幕自适应尺寸 + 修最小化/还原 + 旋转跟随
 #import <UIKit/UIKit.h>
 #import <WebKit/WebKit.h>
 #include "XSAPI.h"
@@ -10,14 +10,15 @@
 #define XS_HAS_EMBEDDED_HTML 0
 #endif
 
-static UIView*      g_panel = nil;
-static WKWebView*   g_web   = nil;
-static UIButton*    g_ball  = nil;
-static BOOL         g_collapsed = NO;
-static CGRect       g_fullRect = {{34, 56}, {440, 620}};
-static NSTimer*     g_statsTimer = nil;
-static int          g_tries = 0;
-static NSTimer*     g_retryTimer = nil;
+static UIView*    g_panel = nil;
+static WKWebView* g_web   = nil;
+static UIButton*  g_ball  = nil;
+static BOOL       g_collapsed = NO;
+static BOOL       g_hasExpanded = NO;
+static CGRect     g_expandedRect = {{0,0},{360,300}};
+static NSTimer*   g_statsTimer = nil;
+static int        g_tries = 0;
+static __weak UIWindow* g_host = nil;
 
 static NSString* const kShim =
     @"window.__XS_NATIVE__ = true;"
@@ -29,8 +30,8 @@ static NSString* const kShim =
 @interface XSPanel : NSObject <WKScriptMessageHandler, WKNavigationDelegate>
 + (instancetype)shared;
 - (void)attach;
-- (void)scheduleRetry;
 - (void)collapse:(BOOL)on;
+- (void)relayout;
 @end
 
 static UIWindow* xs_keyWindow(void){
@@ -39,23 +40,35 @@ static UIWindow* xs_keyWindow(void){
     return UIApplication.sharedApplication.windows.firstObject;
 }
 
+/* 按宿主屏幕算一个合适的初始大小（横屏游戏：宽度最多 46%，高度最多 80%） */
+static CGRect xs_calc_rect(UIWindow* host){
+    CGRect b = host ? host.bounds : UIScreen.mainScreen.bounds;
+    if (CGRectIsEmpty(b)) b = UIScreen.mainScreen.bounds;
+    CGFloat w = MIN(420.0, b.size.width * 0.46);
+    CGFloat h = MIN(620.0, b.size.height * 0.80);
+    if (w < 300) w = 300;
+    if (h < 240) h = 240;
+    CGFloat x = b.size.width - w - 16;
+    CGFloat y = 36;
+    if (x < 8) x = 8;
+    return CGRectMake(x, y, w, h);
+}
+
 @implementation XSPanel
 + (instancetype)shared { static XSPanel* s; static dispatch_once_t o; dispatch_once(&o, ^{ s = [XSPanel new]; }); return s; }
-
-- (void)scheduleRetry {
-    if (g_panel) return;
-    if (g_tries++ > 60) { xs_crash_note("panel", "give up: no keyWindow after 60s"); return; }
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0*NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        [self attach];
-    });
-}
 
 - (void)attach {
     @try {
         if (g_panel) return;
         xs_crash_note("panel", "attach try");
         UIWindow* host = xs_keyWindow();
-        if (!host) { xs_crash_note("panel", "no keyWindow, retry"); [self scheduleRetry]; return; }
+        if (!host) {
+            if (g_tries++ > 60) { xs_crash_note("panel", "give up: no keyWindow"); return; }
+            xs_crash_note("panel", "no keyWindow, retry");
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0*NSEC_PER_SEC)), dispatch_get_main_queue(), ^{ [self attach]; });
+            return;
+        }
+        g_host = host;
 
         WKWebViewConfiguration* cfg = [WKWebViewConfiguration new];
         WKUserContentController* ucc = [WKUserContentController new];
@@ -63,8 +76,10 @@ static UIWindow* xs_keyWindow(void){
         [ucc addScriptMessageHandler:self name:@"xs"];
         cfg.userContentController = ucc;
 
-        g_panel = [[UIView alloc] initWithFrame:g_fullRect];
-        g_panel.backgroundColor = [UIColor colorWithRed:0.09 green:0.09 blue:0.11 alpha:0.97];  /* 兜底可见 */
+        if (!g_hasExpanded) { g_expandedRect = xs_calc_rect(host); g_hasExpanded = YES; }
+
+        g_panel = [[UIView alloc] initWithFrame:g_expandedRect];
+        g_panel.backgroundColor = [UIColor colorWithRed:0.09 green:0.09 blue:0.11 alpha:0.97];
         g_panel.layer.cornerRadius = 10;
         g_panel.layer.masksToBounds = YES;
 
@@ -78,12 +93,12 @@ static UIWindow* xs_keyWindow(void){
         [g_panel addSubview:g_web];
 
         g_ball = [UIButton buttonWithType:UIButtonTypeSystem];
-        g_ball.frame = CGRectMake(0, 0, 56, 56);
+        g_ball.frame = CGRectMake(0, 0, 48, 48);
         g_ball.backgroundColor = [UIColor colorWithRed:0.31 green:0.55 blue:1.0 alpha:0.95];
         g_ball.layer.cornerRadius = 10;
         [g_ball setTitle:@"扫" forState:UIControlStateNormal];
         [g_ball setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-        g_ball.titleLabel.font = [UIFont boldSystemFontOfSize:20];
+        g_ball.titleLabel.font = [UIFont boldSystemFontOfSize:18];
         [g_ball addTarget:self action:@selector(onBallTap) forControlEvents:UIControlEventTouchUpInside];
         g_ball.hidden = YES;
         [g_panel addSubview:g_ball];
@@ -93,23 +108,25 @@ static UIWindow* xs_keyWindow(void){
         UIPanGestureRecognizer* pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(onPan:)];
         [g_panel addGestureRecognizer:pan];
 
-        xs_crash_note("panel", [[NSString stringWithFormat:@"attached to %@ frame=%@", NSStringFromClass(host.class), NSStringFromCGRect(host.bounds)] UTF8String]);
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(relayout)
+                                                     name:UIDeviceOrientationDidChangeNotification object:nil];
+
+        xs_crash_note("panel", [[NSString stringWithFormat:@"attached %@ screen=%@ rect=%@", NSStringFromClass(host.class), NSStringFromCGRect(host.bounds), NSStringFromCGRect(g_expandedRect)] UTF8String]);
         [self loadHTML];
         [self startStats];
-        [self kickRenderCheck];
     } @catch (NSException* e) {
         xs_crash_note("panel", [[NSString stringWithFormat:@"attach exception %@", e] UTF8String]);
     }
 }
 
-- (void)kickRenderCheck {
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(4.0*NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        if (!g_web) return;
-        NSString* js = @"(function(){ try { return String(document.body && document.body.innerText ? document.body.innerText.length : -1); } catch(e){ return 'err'; } })()";
-        [g_web evaluateJavaScript:js completionHandler:^(id r, NSError* e){
-            xs_crash_note("panel", [[NSString stringWithFormat:@"rendercheck len=%@ err=%@", r ?: @"nil", e.localizedDescription ?: @"nil"] UTF8String]);
-        }];
-    });
+- (void)relayout {
+    if (!g_panel || g_collapsed) return;
+    UIWindow* host = g_host ?: xs_keyWindow();
+    if (!host) return;
+    CGRect r = xs_calc_rect(host);
+    g_expandedRect = r;
+    g_panel.frame = r;
+    xs_crash_note("panel", [[NSString stringWithFormat:@"relayout %@", NSStringFromCGRect(r)] UTF8String]);
 }
 
 - (void)webView:(WKWebView*)w didFinishNavigation:(WKNavigation*)n { xs_crash_note("panel", "html loaded"); }
@@ -121,12 +138,13 @@ static UIWindow* xs_keyWindow(void){
 }
 
 - (void)onPan:(UIPanGestureRecognizer*)g {
+    if (!g_panel) return;
     CGPoint t = [g translationInView:g_panel.superview];
     if (g.state == UIGestureRecognizerStateChanged) {
         CGPoint c = g_panel.center; c.x += t.x; c.y += t.y; g_panel.center = c;
         [g setTranslation:CGPointZero inView:g_panel.superview];
     } else if (g.state == UIGestureRecognizerStateEnded) {
-        g_fullRect = g_panel.frame;
+        if (!g_collapsed) g_expandedRect = g_panel.frame;
     }
 }
 
@@ -163,16 +181,31 @@ static UIWindow* xs_keyWindow(void){
 
 - (void)collapse:(BOOL)on {
     @try {
-        g_collapsed = on;
+        if (!g_panel) return;
         if (on) {
+            if (!g_collapsed) g_expandedRect = g_panel.frame;      /* 记住展开时的大小 */
+            g_collapsed = YES;
             CGRect f = g_panel.frame;
             [UIView animateWithDuration:0.2 animations:^{
-                g_panel.frame = CGRectMake(f.origin.x, f.origin.y, 56, 56);
+                g_panel.frame = CGRectMake(f.origin.x, f.origin.y, 48, 48);
                 g_web.alpha = 0;
-            } completion:^(BOOL ok){ g_web.hidden = YES; g_ball.hidden = NO; }];
+            } completion:^(BOOL ok){
+                g_web.hidden = YES;
+                g_ball.hidden = NO;
+                xs_crash_note("panel", "collapsed");
+            }];
         } else {
-            [UIView animateWithDuration:0.2 animations:^{ g_panel.frame = g_fullRect; }
-                             completion:^(BOOL ok){ g_web.hidden = NO; g_web.alpha = 1; g_ball.hidden = YES; }];
+            g_collapsed = NO;
+            CGRect target = g_expandedRect;
+            if (target.size.width < 120 || target.size.height < 120) target = xs_calc_rect(g_host ?: xs_keyWindow());
+            [UIView animateWithDuration:0.2 animations:^{
+                g_panel.frame = target;
+            } completion:^(BOOL ok){
+                g_web.hidden = NO;
+                g_web.alpha = 1;
+                g_ball.hidden = YES;
+                xs_crash_note("panel", [[NSString stringWithFormat:@"restored %@", NSStringFromCGRect(target)] UTF8String]);
+            }];
         }
     } @catch (NSException* e) { xs_crash_note("panel", "collapse exc"); }
 }
@@ -194,7 +227,7 @@ static UIWindow* xs_keyWindow(void){
         if ([cmd isEqualToString:@"__move"]) {
             CGFloat dx = [req[@"dx"] doubleValue], dy = [req[@"dy"] doubleValue];
             CGRect f = g_panel.frame; f.origin.x += dx; f.origin.y += dy; g_panel.frame = f;
-            if (!g_collapsed) g_fullRect = f;
+            if (!g_collapsed) g_expandedRect = f;
             return;
         }
         if ([cmd isEqualToString:@"__min"] || [cmd isEqualToString:@"__hide"]) { [self collapse:YES]; return; }
@@ -218,15 +251,11 @@ extern "C" void xs_panel_show(void){
 
 __attribute__((constructor)) static void xs_panel_onload(void){
     xs_crash_note("panel", "dylib constructor fired");
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0*NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        xs_panel_show();
-    });
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0*NSEC_PER_SEC)), dispatch_get_main_queue(), ^{ xs_panel_show(); });
     [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidBecomeActiveNotification
                                                       object:nil queue:[NSOperationQueue mainQueue]
                                                   usingBlock:^(NSNotification* n){
         xs_crash_note("panel", "app did become active");
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0*NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            xs_panel_show();
-        });
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0*NSEC_PER_SEC)), dispatch_get_main_queue(), ^{ xs_panel_show(); });
     }];
 }
