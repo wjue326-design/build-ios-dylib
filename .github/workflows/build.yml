@@ -19,5 +19,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: libXSPlugin
-          path: ios-src/libXSPlugin.dylib
+          path: ios-src/libXSPlugin.*.dylib
           if-no-files-found: error
