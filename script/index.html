@@ -111,6 +111,7 @@
         <span class="tag" id="tagP">P:v</span>
         <span class="tag" id="tagD">D:x</span>
       </div>
+      <div class="row sub"><button class="mini acc" id="btnInit">初始化内核</button><span class="dim" id="initHint" style="font-size:10px;margin-left:6px"></span></div>
       <div class="logbox" id="logbox"></div>
     </div>
 
@@ -494,6 +495,17 @@ function bind(){
     });
   };
   $('btnStop').onclick = function(){ stopScan('manual'); S.buy=false; render(); toast('已停止'); };
+  $('btnInit').onclick = function(){
+    S.kernelInited = true;
+    Bridge.call({ cmd:'initKernel' }, function(r){ log('initKernel -> ' + JSON.stringify(r)); });
+    $('initHint').textContent = '装 hook 中(约 3s)...'; log('内核 hook 安装中');
+  };
+  $('btnInit').onclick = function(){
+    S.kernelInited = true;
+    $('initHint').textContent = '装 hook 中(约 3s)...';
+    log('内核 hook 安装中');
+    Bridge.call({ cmd:'initKernel' }, function(r){ log('initKernel -> ' + JSON.stringify(r)); });
+  };
   $('btnMin').onclick = function(){
     if (Bridge.mode === 'native') { __xsPostCmd('__min'); return; }
     toast('只有原生面板能最小化');
