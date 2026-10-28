@@ -168,11 +168,11 @@ static UIWindow* xs_keyWindow(void){
             CGRect f = g_panel.frame;
             [UIView animateWithDuration:0.2 animations:^{
                 g_panel.frame = CGRectMake(f.origin.x, f.origin.y, 56, 56);
-                self->g_web.alpha = 0;
-            } completion:^(BOOL ok){ self->g_web.hidden = YES; self->g_ball.hidden = NO; }];
+                g_web.alpha = 0;
+            } completion:^(BOOL ok){ g_web.hidden = YES; g_ball.hidden = NO; }];
         } else {
             [UIView animateWithDuration:0.2 animations:^{ g_panel.frame = g_fullRect; }
-                             completion:^(BOOL ok){ self->g_web.hidden = NO; self->g_web.alpha = 1; self->g_ball.hidden = YES; }];
+                             completion:^(BOOL ok){ g_web.hidden = NO; g_web.alpha = 1; g_ball.hidden = YES; }];
         }
     } @catch (NSException* e) { xs_crash_note("panel", "collapse exc"); }
 }
