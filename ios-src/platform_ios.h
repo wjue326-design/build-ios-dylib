@@ -23,10 +23,7 @@
 #define LOGE(fmt, ...) XS_LOG("E", fmt, ##__VA_ARGS__)
 #define LOGD(fmt, ...) XS_LOG("D", fmt, ##__VA_ARGS__)
 
-static inline long long mono_ms(void){
-    struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
-}
+/* mono_ms: DnfScan.cpp 自己有一份，这里不重复定义 */
 
 // 取基线: 返回首个 basename == name 的镜像头地址(即 __TEXT 加载地址)
 static inline void* maps_first_base(const char* name){
