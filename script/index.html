@@ -235,7 +235,8 @@ var S = {
   calS: 0, calP: 0,
   /* 内核回传 */
   st: { seen:0, bought:0, calls:0, parse:0, cap:0, det:0, gap:0, page:false, P:false, D:false, diag:'--' },
-  seenBase: 0, seenBaseSet: false
+  seenBase: 0, seenBaseSet: false,
+  kernelInited: false,
 };
 
 /* ------------------------------ 规则: 刷新方式 ------------------------------ */
@@ -260,6 +261,8 @@ function guardModes(){
 function startScan(from){
   if (S.scanning) return;
   ensureUseMode(from || 'start');
+  /* 首次开启才装 44 个 hook：避免一进游戏就 hook，进场闪退 */
+  if (!S.kernelInited) { S.kernelInited = true; Bridge.call({ cmd:'initKernel' }); log('内核 hook 安装中(约 30s)...'); }
   S.pendingAt = Date.now() + Math.round(S.delay * 1000);
   S.started = false;
   S.runStart = Date.now();
