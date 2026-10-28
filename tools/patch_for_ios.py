@@ -83,6 +83,9 @@ def main():
     t = wrap_if0(t, 'static void inst_cb(', 'inst_cb')
     t = wrap_if0(t, 'static void instrument_class(', 'instrument_class')
 
+    # 装 hook 前的 30 秒硬等待：iOS 上由面板手动触发，缩短到 3 秒
+    t = t.replace('sleep(30)', 'sleep(3)')
+
     t = t.replace('"libil2cpp.so"', '"UnityFramework"')
     t = t.replace('/data/data/com.tencent.tmgp.dnf/files/', '/var/mobile/Documents/xys/')
     t = t.replace('/sdcard/DCIM/Screenshots/', '/var/mobile/Media/DCIM/')
