@@ -17,6 +17,7 @@
   .hd .t{font-weight:700;font-size:13px;letter-spacing:.5px}
   .hd .st{margin-left:auto;font-size:11px;color:var(--green)}
   .hd .st.off{color:var(--dim)}
+  .hdr-btn{margin-left:8px;width:28px;height:22px;border-radius:5px;border:1px solid var(--line);background:#22252e;color:#cfd3dc;font-size:14px;line-height:18px;padding:0}
   .body{flex:1;overflow-y:auto;padding:8px 10px 8px;background:var(--panel2)}
   .grp{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 8px;margin-bottom:6px}
   .row{display:flex;align-items:center;gap:6px;min-height:26px}
@@ -62,6 +63,7 @@
   <div class="hd">
     <div class="t">星源石扫拍系统</div>
     <div class="st off" id="runState">o 待机</div>
+    <button class="hdr-btn" id="btnMin" title="最小化">—</button>
   </div>
 
   <div class="body" id="body">
@@ -489,6 +491,10 @@ function bind(){
     });
   };
   $('btnStop').onclick = function(){ stopScan('manual'); S.buy=false; render(); toast('已停止'); };
+  $('btnMin').onclick = function(){
+    if (Bridge.mode === 'native') { __xsPostCmd('__min'); return; }
+    toast('只有原生面板能最小化');
+  };
   $('btnHide').onclick = function(){
     if (Bridge.mode === 'native') { __xsPostCmd('__hide'); return; }
     try { h5gg.setWindowVisible(false); } catch(e){ toast('非 H5GG 环境'); }
