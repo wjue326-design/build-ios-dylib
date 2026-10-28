@@ -102,6 +102,11 @@ extern "C" char* xs_api_call(const char* reqUtf8){
             dnf_limit_set(on ? 1 : 0);
             o["data"] = {{"on", on}};
         }
+        else if (cmd == "probe") {
+            char* d = xs_engine_probe();
+            o["data"] = { {"dump", d ? std::string(d) : std::string("null")} };
+            if (d) free(d);
+        }
         else if (cmd == "clearCap") { dnf_rs_reset(); o["data"] = {{"ok", true}}; }
         else if (cmd == "calibSort")  { dnf_snap_time();  o["data"] = {{"field", dnf_get_field_time()}}; }
         else if (cmd == "calibPrice") { dnf_snap_price(); o["data"] = {{"field", dnf_get_field_price()}}; }
