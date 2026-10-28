@@ -75,6 +75,16 @@ void     dnf_scan_set_delay_ms(int ms);      /* 新增: 定时开启(与 auto_on
  */
 char*    xs_api_call(const char* json);
 
+/* ===== 无 hook 扫拍引擎 ===== */
+int      xs_engine_init(void);
+int      xs_engine_ready(void);
+void     xs_engine_start(void);
+void     xs_engine_stop(void);
+void     xs_engine_set_interval(int ms);
+void     xs_engine_set_modes(int btn, int search, int sort, int price);
+int      xs_engine_calls(void);
+int      xs_engine_gap(void);
+
 /* 崩溃/进度日志（写到 Documents/xys/crash.log） */
 void     xs_crash_note(const char* tag, const char* detail);
 
