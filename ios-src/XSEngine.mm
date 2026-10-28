@@ -5,6 +5,7 @@
 #include <string.h>
 #include <time.h>
 #include <atomic>
+#include <string>
 #include <stdio.h>
 #include "platform_ios.h"
 #include "XSAPI.h"
@@ -20,6 +21,11 @@ static void* (*p_type_get_object)(void*);
 static void* (*p_runtime_invoke)(void*, void*, void**, void**);
 static void* (*p_string_new)(void*, const char*);
 static void* (*p_object_new)(void*);
+static void* (*p_object_get_class)(void*);
+static void** (*p_class_get_fields)(void*, void**);
+static const char* (*p_field_get_name)(void*);
+static int (*p_field_get_offset)(void*);
+static const char* (*p_class_get_name)(void*);
 
 static bool  g_eng_ready = false;
 static void* g_img_csharp = NULL;
@@ -67,6 +73,11 @@ extern "C" int xs_engine_init(void) {
         p_class_get_method_from_name = (void*(*)(void*,const char*,int))xs_sym("il2cpp_class_get_method_from_name");
         p_class_get_type          = (void*(*)(void*))xs_sym("il2cpp_class_get_type");
         p_type_get_object         = (void*(*)(void*))xs_sym("il2cpp_type_get_object");
+        p_object_get_class        = (void*(*)(void*))xs_sym("il2cpp_object_get_class");
+        p_class_get_fields        = (void**(*)(void*, void**))xs_sym("il2cpp_class_get_fields");
+        p_field_get_name          = (const char*(*)(void*))xs_sym("il2cpp_field_get_name");
+        p_field_get_offset        = (int(*)(void*))xs_sym("il2cpp_field_get_offset");
+        p_class_get_name          = (const char*(*)(void*))xs_sym("il2cpp_class_get_name");
         p_runtime_invoke          = (void*(*)(void*,void*,void**,void**))xs_sym("il2cpp_runtime_invoke");
 
         char b[256];
@@ -236,6 +247,38 @@ extern "C" void xs_engine_stop(void) {
         xs_state("stopped");
         xs_crash_note("engine", "stopped");
     });
+}
+
+/* ---- 探针：把页面对象的字段和指向的类都列出来，用于找容器/控制器 ---- */
+extern "C" char* xs_engine_probe(void) {
+    std::string out;
+    void* page = xs_find_page();
+    if (!page) { out = "no page instance (先进拍卖行页面)"; }
+    else if (!p_class_get_fields || !p_object_get_class) { out = "field api missing"; }
+    else {
+        void* cls = p_object_get_class(page);
+        char b[320];
+        snprintf(b, sizeof(b), "class=%s inst=%p\n", p_class_get_name ? p_class_get_name(cls) : "?", page);
+        out += b;
+        void** iter = NULL; void* field = NULL; int n = 0;
+        while ((field = p_class_get_fields(cls, &iter)) && n < 60) {
+            const char* fname = p_field_get_name ? p_field_get_name(field) : "?";
+            int off = p_field_get_offset ? p_field_get_offset(field) : -1;
+            void* val = (off >= 0 && off < 0x1000) ? *(void**)((char*)page + off) : NULL;
+            const char* vcls = "-";
+            if (val && p_object_get_class) {
+                void* vc = p_object_get_class(val);
+                if (vc && p_class_get_name) vcls = p_class_get_name(vc);
+            }
+            snprintf(b, sizeof(b), "%s@%d=%p(%s)\n", fname, off, val, vcls);
+            out += b;
+            n++;
+        }
+        if (!n) out += "no fields\n";
+    }
+    char* r = (char*)malloc(out.size() + 1);
+    memcpy(r, out.c_str(), out.size() + 1);
+    return r;
 }
 
 extern "C" int xs_engine_calls(void) { return g_calls.load(); }
